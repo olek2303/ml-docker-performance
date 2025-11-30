@@ -1,0 +1,3 @@
+[submodule "text_classification_analysis"]
+	path = text_classification_analysis
+	url = https://github.com/olek2303/text-classification-analysis.git
