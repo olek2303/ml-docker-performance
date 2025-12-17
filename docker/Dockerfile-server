@@ -10,7 +10,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app
+COPY models/ ./models
+RUN mkdir -p /project/results
 
 EXPOSE 8000
 
-CMD ["python", "app/server.py"]
+CMD ["python", "app/server_fastapi.py"]
