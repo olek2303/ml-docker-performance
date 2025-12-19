@@ -4,10 +4,12 @@ import pandas as pd
 import time
 
 url = "http://localhost:8000/predict"
-output_filename = "../results/local_run_fastapi_test_results.csv"
+model = 'NB'    # albo 'SVC'
+type_run = 'ray'  # albo 'fastapi'
+output_filename = f"../results/docker_run_{model}_{type_run}_test_results.csv"
 
 async def process_api_request(session, input_data):
-    payload = {"text": input_data}
+    payload = {"text": input_data, "model": model}
     start_time = time.perf_counter()
 
     try:
