@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app
 COPY models/ ./models
 RUN mkdir -p /project/results
+RUN mkdir -p /project/results/logs
 
 EXPOSE 8000
 

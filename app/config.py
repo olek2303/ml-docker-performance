@@ -5,10 +5,14 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import TfidfVectorizer
 import joblib
 import logging
+from datetime import datetime
+
+date = datetime.now()
 
 NAIVE_BAYES_MODEL_PATH = "./models/naive_bayes_original.joblib"
 SVC_MODEL_PATH = "./models/svc_original.joblib"
 TFIDF_TOKENIZER_PATH = "./models/tfidf_original.joblib"
+LOG_FILENAME = f"./results/logs/{date.month}{date.day}_{date.hour}{date.minute}{date.second}.log"
 
 # ----- Helper Functions -----
 def load_ml_model():
@@ -47,6 +51,10 @@ stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
+file_handler = logging.FileHandler(LOG_FILENAME, mode='a', encoding='utf-8')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
 uvicorn_log_config = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -62,15 +70,25 @@ uvicorn_log_config = {
             "formatter": "default",
             "stream": "ext://sys.stdout",
         },
+        # Dodajemy handler plikowy do konfiguracji Uvicorna
+        "file": {
+            "class": "logging.FileHandler",
+            "formatter": "default",
+            "filename": LOG_FILENAME,
+            "mode": "a",
+            "encoding": "utf-8",
+        },
     },
     "loggers": {
         "uvicorn": {
-            "handlers": ["console"],
+            # Dodajemy "file" do listy handlerów
+            "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False
         },
         "uvicorn.error": {
-            "handlers": ["console"],
+            # Dodajemy "file" do listy handlerów
+            "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False
         },

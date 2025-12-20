@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app
 COPY models/ ./models
 RUN mkdir -p /project/results
+RUN mkdir -p /project/results/logs
 
 EXPOSE 8000
-EXPOSE 8265
 
-CMD ["serve", "run", "app.server_ray:server_ray"]
+CMD ["python", "app/server_ray.py"]

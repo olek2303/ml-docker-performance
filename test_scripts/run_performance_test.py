@@ -1,11 +1,13 @@
 import asyncio
+from datetime import datetime
+
 import aiohttp
 import pandas as pd
 import time
 
 url = "http://localhost:8000/predict"
 model = 'NB'    # albo 'SVC'
-type_run = 'ray'  # albo 'fastapi'
+type_run = 'fastapi'  # albo 'fastapi'
 output_filename = f"../results/docker_run_{model}_{type_run}_test_results.csv"
 
 async def process_api_request(session, input_data):
@@ -43,18 +45,30 @@ async def run_concurrent_requests(input_data_list):
 if __name__ == "__main__":
 
     df_test_data = pd.read_csv("../text_classification_analysis/data/mental_health_data.csv")
-    test_inputs = df_test_data['statement'].sample(200, random_state=42).tolist()
+    test_inputs = df_test_data['statement'].sample(3000, random_state=42).tolist()
 
     print(f"Sending {len(test_inputs)} test inputs")
+
+    current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    total_start_time = time.perf_counter()
+
     results = asyncio.run(run_concurrent_requests(test_inputs))
+
+    total_end_time = time.perf_counter()
+    total_duration = total_end_time - total_start_time
+
+    rps = len(test_inputs) / total_duration if total_duration > 0 else 0
 
     saved_data = []
 
     for success, input_text, output, duration in results:
         record = {
+            'test_timestamp': current_time_str,
             "input_text": input_text,
             "duration_seconds": round(duration, 4),
-            "status": "success" if success else "error"
+            "status": "success" if success else "error",
+            "total_test_duration_s": round(total_duration, 4),
+            "test_rps": round(rps, 2)
         }
 
         if success:

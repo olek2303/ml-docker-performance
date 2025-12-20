@@ -4,13 +4,15 @@
 
 import traceback
 import time
+import os
 from typing import Annotated
 
 from fastapi import FastAPI, Request, Response, status
 from pydantic import BaseModel, AfterValidator
 from ray import serve
+import ray
 
-from app.config import load_ml_model, predict, logger
+from config import load_ml_model, predict, logger
 
 
 def validate_model_name(model: str) -> str:
@@ -92,3 +94,14 @@ class MLService:
 
 
 server_ray = MLService.bind()
+
+serve.start(http_options={"host": "0.0.0.0", "port": 8000})
+serve.run(server_ray)
+
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    print("\nZamykanie...")
+    serve.shutdown()
+    ray.shutdown()
