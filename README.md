@@ -11,7 +11,7 @@ Celem projektu jest porównanie dwóch podejść do serwowania modeli uczenia ma
 - Testy wydajnościowe obu podejść przy użyciu różnych modeli ML (MultinomialNB oraz SVC) oraz narzędzia Locust do symulacji obciążenia.
 - Konteneryzacja obu rozwiązań przy użyciu Dockera w celu zapewnienia spójnego środowiska uruchomieniowego.
 - Analiza wyników testów wydajnościowych w kontekście liczby obsłużonych zapytań, czasu odpowiedzi oraz stabilności serwerów.
-
+- Do testów wykorzystano dwa modele (Naive Bayes i SVM) z projektu dotyczącego analizy danych tekstowych, oddanego jako projekt zaliczeniowy w zeszłym semestrze (https://github.com/olek2303/text-classification-analysis/).
 ## Wymagania wstępne
 - Python 3.12
 - Docker
@@ -36,7 +36,7 @@ Oprócz tego endpoity takie jak status serwera oraz domyslny root endpoint z inf
 
 Podobnie jak w przypadku FastAPI, zdefiniowano model danych wejściowych oraz endpoint `/predict`, który obsługuje żądania POST. Wykorzystano Ray Serve do zarządzania serwerem i skalowalnością. Logowanie czasu przetwarzania zapytań jest również zaimplementowane.
 
-Oprócz tego endpoity takie jak status serwera oraz domyslny root endpoint z informacją o serwerze.
+Oprócz tego endpointy takie jak status serwera oraz domyslny root endpoint z informacją o serwerze.
 
 ## Testy wydajnościowe
 
@@ -51,16 +51,26 @@ Asynchroniczny skrypt generuje zapytania, które następnie wysyła do odpowiedn
 
 ### Skrypt `test_scripts/run_locust_test.py`
 
-Plik konfiguracyjny dla narzędzia Locust, które symuluje obciążenie serwera poprzez generowanie wielu równoczesnych użytkowników wysyłających zapytania do endpointu predykcji. Zadanie ma symulować normalny ruch użytkowników na serwerze. Wybrano parametry oczekiwania pomiędzy wysyłaniem następnych requestów pomiędzy 0.5 sekundy a 2 sekundy. Zdefiniowano jak wyglądać ma zapytanie dla serwera Rat.
+Plik konfiguracyjny dla narzędzia Locust, które symuluje obciążenie serwera poprzez generowanie wielu równoczesnych użytkowników wysyłających zapytania do endpointu predykcji. Zadanie ma symulować normalny ruch użytkowników na serwerze. Wybrano parametry oczekiwania pomiędzy wysyłaniem następnych requestów pomiędzy 0.5 sekundy, a 2 sekundy. Zdefiniowano jak ma wyglądać zapytanie dla serwera Rat.
 
 ## Wyniki 
+
+Opis kolumn do dwóch, poniższych tabel:
+* **server_type** – Typ serwera (`fastapi` lub `ray`).
+*  **env_type** – Środowisko uruchomieniowe testu:
+    * `local`: serwer uruchomiony bezpośrednio na maszynie hosta.
+    * `docker`: serwer uruchomiony w izolowanym kontenerze.
+* **n_requests** – Całkowita liczba zapytań wygenerowanych i wysłanych przez skrypt testowy w danej serii.
+* **n_success** – Liczba zapytań przetworzonych poprawnie.
+* **avg_dur_sec** – Średni czas całkowity obsługi zapytania mierzony **po stronie klienta** (w sekundach). Czas ten obejmuje: wysłanie żądania, oczekiwanie w kolejce sieciowej/serwera, wykonanie predykcji oraz przesłanie odpowiedzi zwrotnej.
+* **avg_log_czas_ms** – Średni czas samej inferencji modelu mierzony **wewnątrz aplikacji** (w milisekundach). Jest to czas "czysty", poświęcony wyłącznie na wykonanie logiki biznesowej (predykcję modelu ML), bez narzutu sieciowego i komunikacyjnego.
 
 ### MultinomialNB
 Wyniki uzyskane przy wywołaniu skryptu `test_scripts/run_performance_test.py`. 
 Widzimy, że Ray Serve radzi sobie lepiej z obsługą większej liczby zapytań na sekundę. 
 W przypadku MultinomialNB różnica jest mniej więcej pięciokrotna przy 3000 zapytań, 
 gdy mówimy o przetwarzaniu przez sam serwer.
-Ray serve ma również większą ilość poprawnie przetworzonych zapytań. Niemniej kolumna `avg_duration_seconds`
+Ray serve ma również większą liczbę poprawnie przetworzonych zapytań. Niemniej kolumna `avg_duration_seconds`
 wskazuje, że czas odpowiedzi jest dłuższy niż w przypadku FastAPI. Może to wynikać z faktu, że Ray Serve
 używa dodatkowych mechanizmów do zarządzania ruchem i skalowalnością, co może wprowadzać pewne opóźnienia.
 
@@ -79,7 +89,7 @@ używa dodatkowych mechanizmów do zarządzania ruchem i skalowalnością, co mo
 Wyniki uzyskane przy wywołaniu skryptu `test_scripts/run_performance_test.py`. 
 Widzimy, że Ray Serve radzi sobie lepiej z obsługą większej liczby zapytań na sekundę. 
 W przypadku SVC różnica jest jeszcze bardziej widoczna przy 3000 zapytań. Tutaj różnica jest 
-ponad dziesięciokrotna. Ray serve ma również większą ilość poprawnie przetworzonych zapytań. 
+ponad dziesięciokrotna. Ray serve ma również większą liczbę poprawnie przetworzonych zapytań. 
 Także kolumna `avg_duration_seconds` ma mniejszą różnicę przy powrocie zapytań do klienta. 
 Model SVC z natury jest bardziej złożony obliczeniowo niż MultinomialNB. Pokazuje to, że 
 Ray idealnie radzi sobie z obsługą bardziej złożonych modeli pod kątem czasu przetwarzania serwera.
@@ -97,23 +107,33 @@ Ray idealnie radzi sobie z obsługą bardziej złożonych modeli pod kątem czas
 
 
 ### SVC w teście z Locust (wyłącznie Ray Serve)
-- Przypadek 100 użytkowników dodawanych 10 na sekundę
+- Przypadek 100 użytkowników dodawanych w tempie 10 na sekundę
 
 Wyniki na serwerze Ray uruchominym na lokalnej maszynie wykazały dobrą wydajność i stabilność serwera. Odpowiedzi poprawne były udzielane z częstotliwością około 70 RPS.
 
 Wyniki na dockerowym serwerze Ray wykazały równie dobrą wydajność i stabilność serwera. Odpowiedzi poprawne były udzielane z częstotliwością około 80 RPS, lecz czas oczekiwania na odpowiedź był lekko wyższy niż w przypadku lokalnego serwera.
 
-- Przypadek 1000 użytkowników dodawanych 20 na sekundę
+- Przypadek 1000 użytkowników dodawanych w tempie 20 na sekundę
 
 Wyniki na serwerze Ray uruchominym na lokalnej maszynie wykazały niższą wydajność w porównaniu do poprzedniego testu, ale serwer nadal radził sobie dobrze z obsługą zapytań. Odpowiedzi poprawne były udzielane z częstotliwością około 60 RPS. Widać, że mogło być kilka przypadków braku odpowiedzi, gdyż 95 percentyl pokazuje wydłużony czas oczekiwania na odpowiedź. 
 
 Wyniki na dockerowym serwerze Ray wykazały podobne wyniki zarówno pod kątem RPS, jak i czasów odpowiedzi dla 95 percentyla. Niemniej średnia odpowiedź była mniej więcej dwa razy dłuższa w porównaniu z lokalną implementacją. 
 
-- Przypadek 2500 użytkowników dodawanych 100 na sekundę 
+- Przypadek 2500 użytkowników dodawanych w tempie 100 na sekundę 
 
 Wyniki na serwerze Ray uruchominym na lokalnej maszynie wykazały, że przy takim obciążeniu i przedstawionej konfiguracji, nie radzi sobie zbyt dobrze z obsługą zapytań - część z nich była zamykana z powodu przekroczenia limitu czasu, lub odłączenia użytkownika. 
 
 Wyniki na dockerowym serwerze Ray wykazały znaczną niewydolność serwera i przerwanie jego działania w momencie dojścia do 2500 użytkowników. Serwer przesyłał wyłącznie błędy związane z errorami, przy czym nie było żadnej pozytywnie zakończonej odpowiedzi od serwera. 
+
+## Wnioski
+
+Na podstawie przeprowadzonych testów sformułowano następujące wnioski:
+
+* **Narzut Ray Serve:** W przypadku prostych modeli (MultinomialNB), narzut komunikacyjny Ray Serve przewyższa zysk z jego mechanizmów skalowania. FastAPI (jako lżejsze rozwiązanie) oferuje tu znacznie krótszy całkowity czas odpowiedzi (`avg_dur_sec`).
+* **Złożoność obliczeniowa:** Przy modelach obciążających CPU (SVC), Ray Serve wykazuje ogromną przewagę w wewnętrznym czasie przetwarzania (`avg_log_czas_ms`), redukując go nawet 20-krotnie względem FastAPI. Oznacza to lepsze zarządzanie zasobami przy cięższych zadaniach, mimo dłuższego czasu oczekiwania klienta wynikającego z kolejkowania.
+* **Stabilność przy wielu zapytaniach:** Ray Serve lepiej zarządza dużą liczbą zapytań (większa liczba `n_success` przy 3000 requestach), gdzie FastAPI zaczyna gubić pakiety lub zrywać połączenia.
+* **Wpływ konteneryzacji:** Uruchomienie rozwiązań w Dockerze wprowadza zauważalny, lecz akceptowalny narzut wydajnościowy względem środowiska lokalnego, zapewniając w zamian spójność środowiska.
+* **Granice skalowalności:** Testy obciążeniowe (Locust) wykazały, że przy ekstremalnym obciążeniu (2500 użytkowników) konteneryzowana wersja Ray Serve traci stabilność, co sugeruje konieczność dalszej optymalizacji konfiguracji zasobów (CPU/RAM) dla kontenerów przy tak dużej skali.
 
 ## Źródła
 - Zastosowanie kolejki zapytań API - [[Link]](https://medium.com/modern-nlp/101-for-serving-ml-models-10217c9f0764) 
